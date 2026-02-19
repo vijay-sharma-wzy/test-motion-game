@@ -1,49 +1,81 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; background: #111; color: #fff; text-align: center; margin: 0; padding: 10px; }
+        .container { display: flex; flex-direction: column; align-items: center; }
+        
+        .bar-container { width: 90%; background: #333; height: 15px; margin: 4px; border-radius: 10px; overflow: hidden; }
+        .bar { height: 100%; width: 0%; transition: width 0.05s; }
+        .raw { background: #ff3b30; } /* Red for raw/noisy */
+        .filtered { background: #34c759; } /* Green for clean */
+        
+        .label { font-size: 0.8rem; margin-top: 10px; color: #aaa; text-transform: uppercase; }
+        button { padding: 20px; font-size: 1.2rem; background: #007AFF; color: white; border: none; border-radius: 10px; margin-top: 50px; }
+        h3 { margin-bottom: 5px; font-size: 1rem; }
+    </style>
+</head>
 <body>
-    <button id="start">Click to Enable Sensors</button>
-    
-    <h3>Acceleration (Jitters)</h3>
-    <p>X: <span id="x">0</span></p>
-    <p>Y: <span id="y">0</span></p>
-    <p>Z: <span id="z">0</span></p>
 
-    <h3>Rotation (Tilt)</h3>
-    <p>Alpha: <span id="a">0</span></p>
-    <p>Beta: <span id="b">0</span></p>
-    <p>Gamma: <span id="g">0</span></p>
+    <div id="setup">
+        <button id="start">Start Comparison</button>
+    </div>
+
+    <div id="viz" style="display:none;" class="container">
+        <h3>1. Raw Sensor Data (Noisy)</h3>
+        <div class="label">X Accel</div>
+        <div class="bar-container"><div id="raw-x" class="bar raw"></div></div>
+        <div class="label">Y Accel</div>
+        <div class="bar-container"><div id="raw-y" class="bar raw"></div></div>
+
+        <hr style="width:100%; border: 0; border-top: 1px solid #444; margin: 20px 0;">
+
+        <h3>2. With Deadzone (Game Ready)</h3>
+        <p style="font-size: 0.8rem; color: #888;">Ignores values below 0.5 m/s²</p>
+        <div class="label">X Accel</div>
+        <div class="bar-container"><div id="dead-x" class="bar filtered"></div></div>
+        <div class="label">Y Accel</div>
+        <div class="bar-container"><div id="dead-y" class="bar filtered"></div></div>
+    </div>
 
     <script>
-        const startBtn = document.getElementById('start');
+        const btn = document.getElementById('start');
+        const DEADZONE_THRESHOLD = 0.5; // Anything less than this is ignored
 
-        startBtn.addEventListener('click', async () => {
-            // iOS 13+ requires explicit permission
+        btn.onclick = async () => {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
-                const permission = await DeviceMotionEvent.requestPermission();
-                if (permission === 'granted') {
-                    setupListeners();
-                }
-            } else {
-                // Android or non-iOS
-                setupListeners();
-            }
-            startBtn.style.display = 'none';
-        });
+                const res = await DeviceMotionEvent.requestPermission();
+                if (res === 'granted') start();
+            } else { start(); }
+        };
 
-        function setupListeners() {
-            // High-frequency "Jitter" data
+        function start() {
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('viz').style.display = 'flex';
+
             window.addEventListener('devicemotion', (e) => {
-                document.getElementById('x').innerText = e.acceleration.x?.toFixed(3);
-                document.getElementById('y').innerText = e.acceleration.y?.toFixed(3);
-                document.getElementById('z').innerText = e.acceleration.z?.toFixed(3);
-            });
+                const x = e.acceleration.x || 0;
+                const y = e.acceleration.y || 0;
 
-            // Angle/Orientation data
-            window.addEventListener('deviceorientation', (e) => {
-                document.getElementById('a').innerText = e.alpha?.toFixed(1);
-                document.getElementById('b').innerText = e.beta?.toFixed(1);
-                document.getElementById('g').innerText = e.gamma?.toFixed(1);
+                // Update Raw Bars
+                updateBar('raw-x', x);
+                updateBar('raw-y', y);
+
+                // Update Deadzone Bars
+                // If the absolute value is less than threshold, we treat it as ZERO
+                const deadX = Math.abs(x) < DEADZONE_THRESHOLD ? 0 : x;
+                const deadY = Math.abs(y) < DEADZONE_THRESHOLD ? 0 : y;
+                
+                updateBar('dead-x', deadX);
+                updateBar('dead-y', deadY);
             });
+        }
+
+        function updateBar(id, val) {
+            // Scale value for visual impact (0 to 100%)
+            const width = Math.min(Math.abs(val) * 10, 100); 
+            document.getElementById(id).style.width = width + "%";
         }
     </script>
 </body>
