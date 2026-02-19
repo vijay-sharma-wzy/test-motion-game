@@ -1,1 +1,50 @@
-test
+<!DOCTYPE html>
+<html>
+<body>
+    <button id="start">Click to Enable Sensors</button>
+    
+    <h3>Acceleration (Jitters)</h3>
+    <p>X: <span id="x">0</span></p>
+    <p>Y: <span id="y">0</span></p>
+    <p>Z: <span id="z">0</span></p>
+
+    <h3>Rotation (Tilt)</h3>
+    <p>Alpha: <span id="a">0</span></p>
+    <p>Beta: <span id="b">0</span></p>
+    <p>Gamma: <span id="g">0</span></p>
+
+    <script>
+        const startBtn = document.getElementById('start');
+
+        startBtn.addEventListener('click', async () => {
+            // iOS 13+ requires explicit permission
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission === 'granted') {
+                    setupListeners();
+                }
+            } else {
+                // Android or non-iOS
+                setupListeners();
+            }
+            startBtn.style.display = 'none';
+        });
+
+        function setupListeners() {
+            // High-frequency "Jitter" data
+            window.addEventListener('devicemotion', (e) => {
+                document.getElementById('x').innerText = e.acceleration.x?.toFixed(3);
+                document.getElementById('y').innerText = e.acceleration.y?.toFixed(3);
+                document.getElementById('z').innerText = e.acceleration.z?.toFixed(3);
+            });
+
+            // Angle/Orientation data
+            window.addEventListener('deviceorientation', (e) => {
+                document.getElementById('a').innerText = e.alpha?.toFixed(1);
+                document.getElementById('b').innerText = e.beta?.toFixed(1);
+                document.getElementById('g').innerText = e.gamma?.toFixed(1);
+            });
+        }
+    </script>
+</body>
+</html>
